@@ -128,3 +128,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # CORS 설정
 CORS_ALLOW_ALL_ORIGINS = True
+
+# Custom User Model
+AUTH_USER_MODEL = 'accounts.CustomUser'
