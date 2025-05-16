@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'accounts',
     'corsheaders',
+    'drf_spectacular',
 ]
 
 MIDDLEWARE = [
@@ -135,4 +136,5 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 # DRF 커스텀 예외 처리
 REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'accounts.views.custom_exception_handler',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
