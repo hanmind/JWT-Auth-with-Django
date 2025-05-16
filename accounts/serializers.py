@@ -14,4 +14,8 @@ class UserSignupSerializer(serializers.ModelSerializer):
             password=validated_data['password'],
             nickname=validated_data['nickname']
         )
-        return user 
+        return user
+
+class UserLoginSerializer(serializers.Serializer):
+    username = serializers.CharField()
+    password = serializers.CharField(write_only=True) 
