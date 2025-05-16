@@ -8,6 +8,9 @@ import jwt
 from django.conf import settings
 from django.contrib.auth import authenticate
 import datetime
+from rest_framework.authentication import BaseAuthentication
+from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.permissions import IsAuthenticated
 
 # Create your views here.
 
@@ -78,3 +81,62 @@ class LoginView(APIView):
                 "message": serializer.errors
             }
         }, status=status.HTTP_400_BAD_REQUEST)
+
+class JWTAuthentication(BaseAuthentication):
+    def authenticate(self, request):
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            raise AuthenticationFailed({
+                "error": {
+                    "code": "TOKEN_NOT_FOUND",
+                    "message": "토큰이 없습니다."
+                }
+            })
+        try:
+            prefix, token = auth_header.split()
+            if prefix.lower() != 'bearer':
+                raise AuthenticationFailed({
+                    "error": {
+                        "code": "INVALID_TOKEN",
+                        "message": "토큰이 유효하지 않습니다."
+                    }
+                })
+        except ValueError:
+            raise AuthenticationFailed({
+                "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "토큰이 유효하지 않습니다."
+                }
+            })
+        try:
+            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            raise AuthenticationFailed({
+                "error": {
+                    "code": "TOKEN_EXPIRED",
+                    "message": "토큰이 만료되었습니다."
+                }
+            })
+        except jwt.InvalidTokenError:
+            raise AuthenticationFailed({
+                "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "토큰이 유효하지 않습니다."
+                }
+            })
+        user = CustomUser.objects.filter(id=payload['user_id']).first()
+        if user is None:
+            raise AuthenticationFailed({
+                "error": {
+                    "code": "INVALID_TOKEN",
+                    "message": "토큰이 유효하지 않습니다."
+                }
+            })
+        return (user, None)
+
+class ProtectedView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({"message": f"Hello, {request.user.username}!"})
