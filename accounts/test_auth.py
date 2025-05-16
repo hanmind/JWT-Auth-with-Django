@@ -4,8 +4,8 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from accounts.models import CustomUser
 
-@pytest.mark.django_db
 # 회원가입 API 테스트
+@pytest.mark.django_db
 def test_signup_success():
     client = APIClient()
     data = {"username": "pytestuser", "password": "pytestpass", "nickname": "pytestnick"}

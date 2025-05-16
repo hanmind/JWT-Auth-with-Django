@@ -131,3 +131,8 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # Custom User Model
 AUTH_USER_MODEL = 'accounts.CustomUser'
+
+# DRF 커스텀 예외 처리
+REST_FRAMEWORK = {
+    'EXCEPTION_HANDLER': 'accounts.views.custom_exception_handler',
+}

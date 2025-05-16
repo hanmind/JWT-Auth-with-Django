@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from rest_framework.views import APIView
+from rest_framework.views import APIView, exception_handler
 from rest_framework.response import Response
 from rest_framework import status
 from .serializers import UserSignupSerializer, UserLoginSerializer
@@ -11,34 +11,48 @@ import datetime
 from rest_framework.authentication import BaseAuthentication
 from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import IsAuthenticated
+import django.db
+from datetime import timezone
 
 # Create your views here.
+
+# DeprecationWarning 해결용 UTC 객체
+from datetime import timezone
+
+# 커스텀 exception handler로 AuthenticationFailed를 401로 반환
+
+def custom_exception_handler(exc, context):
+    response = exception_handler(exc, context)
+    if response is not None and isinstance(exc, AuthenticationFailed):
+        response.status_code = 401
+    return response
 
 class SignupView(APIView):
     def post(self, request):
         serializer = UserSignupSerializer(data=request.data)
         if serializer.is_valid():
-            username = serializer.validated_data['username']
-            nickname = serializer.validated_data['nickname']
-            if CustomUser.objects.filter(username=username).exists():
+            try:
+                user = serializer.save()
+            except django.db.utils.IntegrityError:
                 return Response({
                     "error": {
                         "code": "USER_ALREADY_EXISTS",
                         "message": "이미 가입된 사용자입니다."
                     }
                 }, status=status.HTTP_400_BAD_REQUEST)
-            if CustomUser.objects.filter(nickname=nickname).exists():
-                return Response({
-                    "error": {
-                        "code": "USER_ALREADY_EXISTS",
-                        "message": "이미 가입된 사용자입니다."
-                    }
-                }, status=status.HTTP_400_BAD_REQUEST)
-            user = serializer.save()
             return Response({
                 "username": user.username,
                 "nickname": user.nickname
             }, status=status.HTTP_201_CREATED)
+        # unique 제약 조건 위반 시에도 USER_ALREADY_EXISTS 반환
+        errors = serializer.errors
+        if 'username' in errors or 'nickname' in errors:
+            return Response({
+                "error": {
+                    "code": "USER_ALREADY_EXISTS",
+                    "message": "이미 가입된 사용자입니다."
+                }
+            }, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             "error": {
                 "code": "INVALID_INPUT",
@@ -46,14 +60,13 @@ class SignupView(APIView):
             }
         }, status=status.HTTP_400_BAD_REQUEST)
 
-# JWT 토큰 생성 함수
-
+# JWT 토큰 생성 함수 (DeprecationWarning 해결)
 def create_jwt_token(user):
     payload = {
         'user_id': user.id,
         'username': user.username,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=1),
-        'iat': datetime.datetime.utcnow(),
+        'exp': datetime.datetime.now(timezone.utc) + datetime.timedelta(hours=1),
+        'iat': datetime.datetime.now(timezone.utc),
     }
     token = jwt.encode(payload, settings.SECRET_KEY, algorithm='HS256')
     return token
